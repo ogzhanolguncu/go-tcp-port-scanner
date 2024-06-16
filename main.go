@@ -4,27 +4,55 @@ import (
 	"flag"
 	"fmt"
 	"net"
+	"time"
 )
 
+const TIMEOUT = 5
+const MAX_PORT = 65535
+
 func main() {
-	portPtr := flag.Uint("port", 42, "Target port")
+	portPtr := flag.Uint("port", 0, "Target port")
 	hostPtr := flag.String("host", "", "Target host")
 
 	flag.Parse()
 
-	checkPort(*hostPtr, *portPtr)
+	if *hostPtr == "" {
+		fmt.Println("Host is required.")
+	}
+
+	if *portPtr == 0 {
+		fmt.Println("No port provided, performing a scan from 1 to 65535")
+
+		for port := uint(1); port <= MAX_PORT; port++ {
+			port, err := checkPort(*hostPtr, port)
+			if err == nil {
+				fmt.Printf("Port: %d is open\n", port)
+			}
+		}
+	} else {
+		port, err := checkPort(*hostPtr, *portPtr)
+		if err == nil {
+			fmt.Printf("Port: %d is open\n", port)
+		} else {
+			fmt.Println("Error:", err)
+		}
+	}
 
 }
 
-func checkPort(host string, port uint) {
+/*
+Checks open ports for given host and port. If port is missing does a vanilla scan from 1-65536
+*/
+func checkPort(host string, port uint) (uint, error) {
 	// Concatenated address: localhost:3333
 	address := fmt.Sprintf("%s:%d", host, port)
 
-	conn, err := net.Dial("tcp", address)
+	conn, err := net.DialTimeout("tcp", address, time.Second*TIMEOUT)
+
 	if err != nil {
-		fmt.Println("Something went wrong when openning a conection to ", address)
+		return 0, err
 	}
-	result := fmt.Sprintf("Fort: %d is open", port)
-	fmt.Println(result)
+
 	conn.Close()
+	return port, nil
 }
