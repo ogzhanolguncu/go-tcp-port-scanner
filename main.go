@@ -16,7 +16,7 @@ const DEFAULT_TIMEOUT = time.Millisecond * 300
 const MAX_PORT = math.MaxUint16
 const DEFAULT_WORKER_COUNT = 100
 
-type Payload struct {
+type payload struct {
 	port        port_parser.Port
 	host        string
 	timeout     time.Duration
@@ -29,29 +29,26 @@ var (
 		--port=443,80
 		--port=20-443
 	*/
-	port = flag.String("port", "0", "Target port --port=443\nSelected ports --port=443,80 (splitted by ',')\nRange --port=20-443 (splitted by '-') or port range")
-	/*
-		--host=127.0.0.1
-	*/
+	port        = flag.String("port", "0", "Target port --port=443\nSelected ports --port=443,80 (splitted by ',')\nRange --port=20-443 (splitted by '-') or port range")
 	host        = flag.String("host", "", "Target host")
 	timeout     = flag.Int("timeout", 300, "Timeout in millis")
 	concurrency = flag.Uint("concurrency", DEFAULT_WORKER_COUNT, "Number of concurrent workers")
 )
 
-func parseCLIArgs() (Payload, error) {
+func parseCLIArgs() (payload, error) {
 	flag.Parse()
 
 	var p port_parser.Port
 	err := p.Parse(*port)
 	if err != nil {
-		return Payload{}, err
+		return payload{}, err
 	}
 
 	if *host == "" {
-		return Payload{}, fmt.Errorf("host is required")
+		return payload{}, fmt.Errorf("host is required")
 	}
 
-	return Payload{
+	return payload{
 		port:        p,
 		host:        *host,
 		timeout:     time.Millisecond * time.Duration(*timeout),
@@ -117,7 +114,7 @@ func portListScanner(host string, portList []int) {
 func worker(host string, ports chan uint, wg *sync.WaitGroup) {
 	defer wg.Done()
 	for port := range ports {
-		if _, err := checkPort(Payload{
+		if _, err := checkPort(payload{
 			port: port_parser.Port{SinglePort: int(port)},
 			host: host,
 		}); err == nil {
@@ -126,7 +123,7 @@ func worker(host string, ports chan uint, wg *sync.WaitGroup) {
 	}
 }
 
-func checkPort(args Payload) (uint, error) {
+func checkPort(args payload) (uint, error) {
 	address := fmt.Sprintf("%s:%d", args.host, args.port.SinglePort)
 	conn, err := net.DialTimeout("tcp", address, DEFAULT_TIMEOUT)
 	if err != nil {
